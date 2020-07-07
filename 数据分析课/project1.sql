@@ -5,16 +5,18 @@ select * from project1 limit 10;
 
 1.1 热度最高的产品（Excel）
 
-select id,name,avg(`reviews.rating`) as avg_rating,count(id) as frequency
+以被评论数来测量产品热度
+
+select id,name,avg(`reviews.rating`),count(`reviews.text`),count(id)
 from project1
 group by id,name
-order by count(id) desc
+order by count(`reviews.rating`) desc
 limit 10;
-#when there is column 'name' 10750 5056
-#when there is no column 'name' 10964 6607 5056
 #conclusion:热度最高的产品为fire tablet，Kindle，echo
 
 1.2 品牌总体评价
+
+以品牌分类，计算出的平均评分为品牌评价标准
 
 select brand,avg(`reviews.rating`) as avg_rating
 from project1
@@ -40,25 +42,23 @@ order by avg_rating desc;
 
 1.5 密钥的复杂程度是否影响评价
 
+先求得密钥的平均长度，以平均长度以下的为简单密钥，平均长度以上的密钥为复杂密钥
+分别计算对应的平均评分
+
 select distinct(`keys`) from project1;
 select avg(length(`keys`) ) from project1;
 #420以上的为复杂的密钥，420以下的为简单的密钥
 
 select `keys`as simple_keys,avg(`reviews.rating`) as avg_rating
-from project1 where length(`keys`) < 420
-group by `keys` 
-order by avg_rating;
+from project1 where length(`keys`) < 420;
 
 select `keys` as compli_keys,avg(`reviews.rating`) as avg_rating
-from project1 where length(`keys`) >= 420
-group by `keys` 
-order by avg_rating;
+from project1 where length(`keys`) >= 420;
 
-#there is no correlation between keys and rating 
 
-1.6 从评论数的角度看产品人气，话题度等(无法计算空值）
+#根据结果来看密钥长的产品的评分比密钥短的产品的评分略高，用Excel做回归发现密钥与评分无关联。
 
-select sum(`reviews.didpurchase`) from project1;
+1.6 从评论数的角度看产品人气，话题度等(无法计算空值，出错）
 
 select sum((case when `reviews.didpurchase` is null then 1 else 0 end)) as `null`,
 sum((case when `reviews.didpurchase` is not null then 1 else 0 end)) as not_null
@@ -118,29 +118,11 @@ from project1
 group by `reviews.username`,categories
 order by count(`reviews.rating`) desc;
 
-2.10 密钥复杂是否会被评论
+2.10 密钥复杂是否会被评论（Excel回归分析）
 
 select distinct(`keys`) from project1;
 select avg(length(`keys`) ) from project1;
 #平均长度为420以上的为复杂的密钥，420以下的为简单的密钥
-
-select sum((case when `reviews.text` is null then 1 else 0 end)) as `null`,
-sum((case when `reviews.text` is not null then 1 else 0 end)) as not_null
-from project1;
-
-#不管密钥长度如何都被评论了，评论数与密钥长度无明显关联
-
-select `keys`as simple_keys,count(`reviews.rating`) as num_rating
-from project1 where length(`keys`) < 420
-group by `keys` 
-order by num_rating desc;
-
-select `keys` as compli_keys,count(`reviews.txt`) as num_rating
-from project1 where length(`keys`) >= 420
-group by `keys` 
-order by num_rating desc;
-
-#从结果上看，无明显关联
 
 2.11 这个人是不是很难取悦
 
@@ -155,7 +137,7 @@ order by avg(`reviews.rating`) asc;
 
 用评论数和评论字数评定
 
-2.13 这个人是不是长时间活跃 
+2.13 这个人是不是长时间活跃（Excel） 
 
 累加用户发表评论的天数
 
@@ -163,9 +145,11 @@ order by avg(`reviews.rating`) asc;
 
 2.14 这个人是不是喜欢四处走
 
-数据确实无法计算
+数据缺失无法计算
 
 2.15 这个人总体而言是正向居多还是负向居多
+
+看用户给产品的平均评分来看
 
 select `reviews.username`,avg(`reviews.rating`)
 from project1
@@ -174,6 +158,23 @@ order by avg(`reviews.rating`) desc;
 
 2.16 这个人发表看法喜欢讲哪些主题
 
+2.17 用户关注点
+
+如果用户评论里有下列关键词则加1，并计算下裂关键词在所有评论里所占的比例。
+price，expensive，quality，size,gift,fast,gift
+
+select `name`,categories,
+sum( case when `reviews.text` like '%price%' or '%cheap%' '%expensive%' then 1 else 0 end) as price_view,
+sum( case when `reviews.text` like '%price%' or '%cheap%' '%expensive%' then 1 else 0 end)/count(id) as price_percentage,
+sum( case when `reviews.text` like '%easy%' or '%difficult%' then 1 else 0 end) as easy_view,
+sum( case when `reviews.text` like '%easy%' or '%difficult%' then 1 else 0 end)/count(id) as easy_percentage,
+sum( case when `reviews.text` like '%gift%' then 1 else 0 end) as gift_view,
+sum( case when `reviews.text` like '%gift%' then 1 else 0 end)/count(id) as gift_percentage,
+sum( case when `reviews.text` like '%quality%' then 1 else 0 end) as quality_view,
+sum( case when `reviews.text` like '%quality%' then 1 else 0 end)/count(id) as quality_percentage
+from project1
+group by `name`,categories
+order by price_view desc;
 
 
 
